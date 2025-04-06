@@ -1,0 +1,72 @@
+﻿<Page x:Class="DefectDetection.Views.MainPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      mc:Ignorable="d">
+
+    <Grid x:Name="ContentArea">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Uid="Main_Title" Grid.Row="0" Style="{StaticResource PageTitleStyle}" />
+
+        <Grid Grid.Row="1">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition />
+                    <RowDefinition />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition MaxWidth="200" />
+                </Grid.ColumnDefinitions>
+                <!--  相机预览框  -->
+                <MediaPlayerElement x:Name="MainPageCaptureElement"
+                                    Grid.Row="0"
+                                    Grid.Column="0"
+                                    Margin="0,0,8,0"
+                                    AutoPlay="True"
+                                    Stretch="Uniform" />
+                <!--  右边的控制框  -->
+                <Grid x:Name="MainControlGrid"
+                      Grid.Row="0"
+                      Grid.RowSpan="2"
+                      Grid.Column="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Orientation="Vertical">
+                        <TextBlock x:Uid="MainPageThSettingTitle" Text="检测参数设置" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Uid="MainPageConfThText" Text="置信度阈值：" />
+
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Uid="MainPageIoUThText" Text="IoU阈值：" />
+
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Orientation="Vertical">
+                        <TextBlock x:Uid="MainPageResultTitle" Text="检测结果" />
+                        <TextBlock x:Uid="MainPageObjectLocText" Text="目标位置" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Uid="MainPageMinText" Text="min坐标" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Uid="MainPageMaxText" Text="max坐标" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+                <!--  下方的图像提示信息栏  -->
+                <StackPanel x:Name="MainPageInfoStack" Grid.Row="1">
+                    <InfoBar Title="信息" Message="毕设作品" Severity="Informational" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+
+    </Grid>
+</Page>

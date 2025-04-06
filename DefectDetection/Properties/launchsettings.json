@@ -1,0 +1,10 @@
+﻿{
+    "profiles": {
+      "DefectDetection (Package)": {
+        "commandName": "MsixPackage"
+      },
+      "DefectDetection (Unpackaged)": {
+        "commandName": "Project"
+      }
+    }
+}
