@@ -16,6 +16,15 @@
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
   </PropertyGroup>
+  <ItemGroup>
+    <Content Remove="Assets\Fonts\CONSOLA.TTF" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="Assets\Fonts\CONSOLA.TTF" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Fonts\CONSOLA.TTF" />
+  </ItemGroup>
 
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
@@ -27,6 +36,8 @@
     <PackageReference Include="Microsoft.ML.OnnxRuntime.Gpu.Windows" Version="1.21.0" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250310001" />
     <PackageReference Include="Microsoft.Xaml.Behaviors.WinUI.Managed" Version="3.0.0" />
+    <PackageReference Include="OpenCvSharp4.Windows" Version="4.10.0.20241108" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.3" />
     <PackageReference Include="WinUIEx" Version="2.5.1" />
   </ItemGroup>
 

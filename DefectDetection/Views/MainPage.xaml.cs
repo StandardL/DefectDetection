@@ -4,6 +4,8 @@ using Microsoft.UI.Xaml.Controls;
 using Windows.Media.Capture.Frames;
 using Windows.Media.Capture;
 using Microsoft.UI.Xaml;
+using System.Collections.ObjectModel;
+using Windows.Globalization.NumberFormatting;
 
 namespace DefectDetection.Views;
 
@@ -19,6 +21,7 @@ public sealed partial class MainPage : Page
         ViewModel = App.GetService<MainViewModel>();
         InitializeComponent();
 
+        ConfigureNumberBoxFormat();
         StartCaptureElement();
 
         this.Unloaded += MainPage_Unloaded;
@@ -27,6 +30,7 @@ public sealed partial class MainPage : Page
     private async void StartCaptureElement()
     {
         var groups = await MediaFrameSourceGroup.FindAllAsync();
+        ViewModel.sourceGroups = new(groups);
         if (groups.Count == 0)
         {
             ViewModel.strDetectInfo = "No camera devices found.";
@@ -57,6 +61,25 @@ public sealed partial class MainPage : Page
         {
             new Task(ViewModel.mediaCapture.Dispose).Start();
         }
+    }
+
+    private void ConfigureNumberBoxFormat()
+    {
+        var formatter = new DecimalFormatter
+        {
+            FractionDigits = 2,
+            IntegerDigits = 1,    // 整数部分最少显示1位（避免显示为 .50）
+            IsGrouped = false
+        };
+        var rounder = new IncrementNumberRounder
+        {
+            Increment = 0.01,
+            RoundingAlgorithm = RoundingAlgorithm.RoundHalfUp  // 四舍五入算法
+        };
+        formatter.NumberRounder = rounder;
+
+        MainPageConfNumberBox.NumberFormatter = formatter;
+        MainPageIoUNumberBox.NumberFormatter = formatter;
     }
 
 }
