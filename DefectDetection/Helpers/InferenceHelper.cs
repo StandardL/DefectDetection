@@ -1,9 +1,7 @@
 ﻿// InferenceHelper.cs
+using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Graphics.Imaging;
 using Windows.Storage.Streams;
 
@@ -26,7 +24,7 @@ public class Detection
     public float[] BBox
     {
         get; set;
-    }  // [x_center, y_center, width, height] (归一化坐标)
+    }  // [x_min, y_min, x_max, y_max] (xyxy坐标)
     public float Confidence
     {
         get; set;
@@ -48,6 +46,7 @@ public class InferenceHelper
     private readonly int _inputSize;
     private readonly float _confThreshold;
     private readonly float _iouThreshold;
+    private System.Drawing.Size _originalSize;
 
     public InferenceHelper(
         string modelPath,
@@ -65,13 +64,15 @@ public class InferenceHelper
 
     public async Task<InferenceResult> ProcessImageAsync(SoftwareBitmap inputBitmap)
     {
+        _originalSize = new System.Drawing.Size(inputBitmap.PixelWidth, inputBitmap.PixelHeight);
+
         // 预处理
         var (processedBitmap, inputTensor, ratio) = await PreprocessImageAsync(inputBitmap);
 
         // 创建输入
         var inputs = new List<NamedOnnxValue>
         {
-            NamedOnnxValue.CreateFromTensor("images", inputTensor) // 根据实际模型输入名称修改
+            NamedOnnxValue.CreateFromTensor("images", inputTensor)
         };
 
         // 推理
@@ -95,8 +96,62 @@ public class InferenceHelper
     /// </summary>
     /// <param name="bitmap"></param>
     /// <returns>(处理后的bitmap, Tensor, ratio)</returns>
-    private async Task<(SoftwareBitmap, Tensor<float>, float ratio)> PreprocessImageAsync(SoftwareBitmap bitmap)
+    private async Task<(SoftwareBitmap, Tensor<float>, float)> PreprocessImageAsync(SoftwareBitmap bitmap)
     {
+
+        // 原始尺寸
+        int originalWidth = bitmap.PixelWidth;
+        int originalHeight = bitmap.PixelHeight;
+
+        // 获取bitmap的shape数据
+        var r = Math.Min((float)_inputSize / originalWidth, (float)_inputSize / originalHeight);
+        int scaledWidth = (int)(originalWidth * r);
+        int scaledHeight = (int)(originalHeight * r);
+
+        /*var scaledBitmap = await ScaleImageAsync(bitmap, (uint)scaledWidth, (uint)scaledHeight);
+
+        // 填充画布
+        var paddedBitmap = new SoftwareBitmap(
+        BitmapPixelFormat.Bgra8,
+        (int)_inputSize,
+        (int)_inputSize,
+        BitmapAlphaMode.Premultiplied
+        );
+
+        // 使用Canvas进行绘制
+        using (var canvasBuffer = new CanvasRenderTarget(
+            CanvasDevice.GetSharedDevice(),
+            _inputSize,
+            _inputSize,
+            96 // 默认DPI
+        ))
+        using (var drawingSession = canvasBuffer.CreateDrawingSession())
+        {
+            // 填充背景色 (B=114, G=114, R=114, A=255)
+            drawingSession.Clear(Windows.UI.Color.FromArgb(255, 114, 114, 114));
+
+            // 将缩放后的图像绘制到左上角
+            using (var scaledCanvas = CanvasBitmap.CreateFromSoftwareBitmap(
+                CanvasDevice.GetSharedDevice(),
+                scaledBitmap))
+            {
+                drawingSession.DrawImage(scaledCanvas, new Rect(0, 0, scaledWidth, scaledHeight));
+            }
+
+            // 将结果复制回SoftwareBitmap
+            paddedBitmap = SoftwareBitmap.CreateCopyFromBuffer(
+                canvasBuffer.GetPixelBytes().AsBuffer(),
+                BitmapPixelFormat.Bgra8,
+                (int)_inputSize,
+                (int)_inputSize,
+                BitmapAlphaMode.Premultiplied
+            );
+        }*/
+
+        // 计算填充
+        float padTop = (_inputSize - scaledHeight) / 2f;
+        float padLeft = (_inputSize - scaledWidth) / 2f;
+
         // 转换为BGRA8格式
         if (bitmap.BitmapPixelFormat != BitmapPixelFormat.Bgra8)
         {
@@ -116,14 +171,11 @@ public class InferenceHelper
         encoder.SetSoftwareBitmap(bitmap);
         await encoder.FlushAsync();
 
-        // 获取bitmap的shape数据
-        var r = Math.Min((float)_inputSize / bitmap.PixelWidth, (float)_inputSize / bitmap.PixelHeight) ;
-
         var decoder = await BitmapDecoder.CreateAsync(inputStream);
         var transform = new BitmapTransform
         {
-            ScaledWidth = (uint)_inputSize,
-            ScaledHeight = (uint)_inputSize,
+            ScaledWidth = (uint)(originalWidth * r),
+            ScaledHeight = (uint)(originalHeight * r),
             InterpolationMode = BitmapInterpolationMode.Linear
         };
 
@@ -138,21 +190,66 @@ public class InferenceHelper
         processedBitmap.CopyFromBuffer(pixels.AsBuffer());
 
         // 转换为Tensor
-        var tensor = new DenseTensor<float>([1, 3, _inputSize, _inputSize]);  // BNHW
+        var tensor = new DenseTensor<float>([1, 3, _inputSize, _inputSize]);  // NCHW
+
+        /*var buffer = new Windows.Storage.Streams.Buffer(
+        (uint)(_inputSize * _inputSize * 4) // BGRA8每个像素占4字节
+    );
+        paddedBitmap.CopyToBuffer(buffer);
+        var pixels = buffer.ToArray(); // 获取byte[]*/
 
         // 转换为RGB
         Parallel.For(0, _inputSize, y =>
         {
-            for (int x = 0; x < _inputSize; x++)
+            Parallel.For(0, _inputSize, x =>
             {
                 var idx = (y * _inputSize + x) * 4;
                 tensor[0, 0, y, x] = pixels[idx + 2];   // R
                 tensor[0, 1, y, x] = pixels[idx + 1];   // G
                 tensor[0, 2, y, x] = pixels[idx];       // B
-            }
+            });
         });
 
         return (processedBitmap, tensor, r);
+    }
+
+    private async Task<SoftwareBitmap> ScaleImageAsync(SoftwareBitmap source, uint targetWidth, uint targetHeight)
+    {
+        using var stream = new InMemoryRandomAccessStream();
+
+        // 编码源图像
+        var encoder = await BitmapEncoder.CreateAsync(
+            BitmapEncoder.JpegEncoderId,
+            stream);
+        encoder.SetSoftwareBitmap(source);
+        await encoder.FlushAsync();
+
+        // 应用缩放变换
+        var decoder = await BitmapDecoder.CreateAsync(stream);
+        var transform = new BitmapTransform
+        {
+            ScaledWidth = targetWidth,
+            ScaledHeight = targetHeight,
+            InterpolationMode = BitmapInterpolationMode.Linear
+        };
+
+        // 获取缩放后的像素数据
+        var pixelData = await decoder.GetPixelDataAsync(
+            BitmapPixelFormat.Bgra8,
+            BitmapAlphaMode.Premultiplied,
+            transform,
+            ExifOrientationMode.RespectExifOrientation,
+            ColorManagementMode.DoNotColorManage
+        );
+
+        // 创建缩放后的SoftwareBitmap
+        return SoftwareBitmap.CreateCopyFromBuffer(
+            pixelData.DetachPixelData().AsBuffer(),
+            BitmapPixelFormat.Bgra8,
+            (int)targetWidth,
+            (int)targetHeight,
+            BitmapAlphaMode.Premultiplied
+        );
     }
 
     /// <summary>
@@ -190,10 +287,10 @@ public class InferenceHelper
                 {
                     BBox =
                     [
-                        output[0, i, 0] / ratio,  // x_center
-                        output[0, i, 1] / ratio,  // y_center
-                        output[0, i, 2] / ratio,  // width
-                        output[0, i, 3] / ratio   // height
+                        output[0, i, 0],  // x_center
+                        output[0, i, 1],  // y_center
+                        output[0, i, 2],  // width
+                        output[0, i, 3]   // height
                     ],
                     Confidence = confidence,
                     ClassId = classId,
@@ -257,22 +354,6 @@ public class InferenceHelper
         int numPoints = dimansions[1];
 
         // Process outputs
-        /*for (int b = 0; b < batchSize; b++)
-        {
-            for (int i = 0; i < numPoints; i++)
-            {
-                int baseIndex = (int)(b * numPoints * 4 + i * 4);
-                // Update coordinates
-                outputs[b, i, 0] = (float)((outputs[b, i, 0] + combinedGrids[i, 0]) * combinedStrides[i]);
-                outputs[b, i, 1] = (float)((outputs[b, i, 1] + combinedGrids[i, 1]) * combinedStrides[i]);
-
-                // Update dimensions
-                outputs[b, i, 2] = (float)(Math.Exp(outputs[b, i, 2]) * combinedStrides[i]);
-                outputs[b, i, 3] = (float)(Math.Exp(outputs[b, i, 3]) * combinedStrides[i]);
-            }
-        }*/
-
-
         Parallel.For(0, batchSize, b =>
         {
             Parallel.For(0, numPoints, i =>
@@ -349,5 +430,10 @@ public class InferenceHelper
         float areaB = boxB[2] * boxB[3];
 
         return interArea / (areaA + areaB - interArea);
+    }
+
+    public async Task<SoftwareBitmap> GetAnnotatedImageAsync(SoftwareBitmap originBitmap, IEnumerable<Detection> detections)
+    {
+        return await ImageProcessor.DrawDetectionsAsync(originBitmap, detections, 3);
     }
 }

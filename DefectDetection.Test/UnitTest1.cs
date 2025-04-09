@@ -12,7 +12,7 @@ public class UnitTest1
         var labels = new List<string> { "crazing", "inclusion", "pitted_surface", "rolled-in_scale", "scratches", "patches" };
 
         InferenceHelper inferenceHelper = new(
-            "D:\\Coder\\C# Source Files\\DefectDetection\\DefectDetection\\Assets\\ONNX Models\\quantized_ckpt_int8_best_ap50.onnx",
+            "D:\\Coder\\C# Source Files\\DefectDetection\\DefectDetection\\Assets\\quantized_ckpt_int8_best_ap50.onnx",
             labels.ToArray(),
                 confThreshold: 0.3f
             );
