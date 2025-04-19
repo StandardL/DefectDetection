@@ -52,6 +52,13 @@
                                         Click="OfflinePagePickPhotoButton_Click"
                                         Style="{StaticResource AccentButtonStyle}" />
                                 <Button x:Name="OfflinePageDetectButton" Click="OfflinePageDetectButton_Click" Content="推理" />
+                                <!--  推理转圈动画  -->
+                                <ProgressRing x:Name="OfflinePageDetectProgressRing"
+                                              Width="24"
+                                              Height="24"
+                                              HorizontalAlignment="Left"
+                                              VerticalAlignment="Center"
+                                              IsActive="False" />
                             </StackPanel>
 
                             <TextBlock x:Uid="OfflinePageThSettingTitle"
@@ -121,6 +128,10 @@
                             </Grid>
                         </StackPanel>
                         <StackPanel Grid.Row="1" Orientation="Vertical">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Uid="OfflinePageDetectTimeTitle" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                <TextBlock x:Name="OfflinePageDetectTime" Text="--ms" />
+                            </StackPanel>
                             <!--  检测结果  -->
                             <TextBlock x:Uid="OfflinePageResultTitle"
                                        FontSize="18"

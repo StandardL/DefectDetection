@@ -1,4 +1,5 @@
-﻿using DefectDetection.Helpers;
+﻿using System.Diagnostics;
+using DefectDetection.Helpers;
 using DefectDetection.ViewModels;
 
 using Microsoft.UI.Xaml.Controls;
@@ -89,6 +90,7 @@ public sealed partial class OfflinePage : Page
 
     private async void OfflinePageDetectButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
+        OfflinePageDetectProgressRing.IsActive = true;
         // 更新参数
         ViewModel.inferenceHelper = new(
             ModelHelper.modelOnnxPath,
@@ -98,12 +100,23 @@ public sealed partial class OfflinePage : Page
             (float)ViewModel.DIouRate
         );
 
+        // 计时器
+        var stopWatch = new Stopwatch();
+        stopWatch.Start();
+
         var result = await ViewModel.inferenceHelper.ProcessImageAsync(ViewModel.softwareBitmap);
+
+        stopWatch.Stop();
 
         DispatcherQueue.TryEnqueue(() =>
         {
             DisplayResult(result);
         });
+
+        // 获取总运行时间（精确到小数秒）
+        var totalSeconds = stopWatch.Elapsed.TotalMilliseconds;
+        OfflinePageDetectTime.Text = $"{totalSeconds}ms";
+        OfflinePageDetectProgressRing.IsActive = false;
     }
 
     private async void DisplayResult(InferenceResult result)

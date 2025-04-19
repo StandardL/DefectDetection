@@ -243,4 +243,7 @@
   <data name="OfflinePageIoUText.Text" xml:space="preserve">
     <value>Target Label: </value>
   </data>
+  <data name="OfflinePageDetectTimeTitle.Text" xml:space="preserve">
+    <value>Inference Time: </value>
+  </data>
 </root>
